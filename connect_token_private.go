@@ -82,10 +82,10 @@ func (p *ConnectTokenPrivate) Write() ([]byte, error) {
 }
 
 // Encrypts, in place, the TokenData buffer, assumes Write() has already been called.
-func (p *ConnectTokenPrivate) Encrypt(protocolId, expireTimestamp, sequence uint64, privateKey []byte) error {
-	additionalData, nonce := buildTokenCryptData(protocolId, expireTimestamp, sequence)
+func (p *ConnectTokenPrivate) Encrypt(protocolId, expireTimestamp uint64, nonce []byte, privateKey []byte) error {
+	additionalData := buildTokenCryptData(protocolId, expireTimestamp, nonce)
 	encBuf := p.TokenData.Buf[:CONNECT_TOKEN_PRIVATE_BYTES-MAC_BYTES]
-	if err := EncryptAead(encBuf, additionalData, nonce, privateKey); err != nil {
+	if err := EncryptAeadX(encBuf, additionalData, nonce, privateKey); err != nil {
 		return err
 	}
 
@@ -99,7 +99,7 @@ func (p *ConnectTokenPrivate) Encrypt(protocolId, expireTimestamp, sequence uint
 
 // Decrypts the internal TokenData buffer, assumes that TokenData has been populated with the encrypted data
 // (most likely via NewConnectTokenPrivateEncrypted(...)). Optionally returns the decrypted buffer to caller.
-func (p *ConnectTokenPrivate) Decrypt(protocolId, expireTimestamp, sequence uint64, privateKey []byte) ([]byte, error) {
+func (p *ConnectTokenPrivate) Decrypt(protocolId, expireTimestamp uint64, nonce []byte, privateKey []byte) ([]byte, error) {
 	var err error
 
 	if len(p.TokenData.Buf) != CONNECT_TOKEN_PRIVATE_BYTES {
@@ -107,8 +107,8 @@ func (p *ConnectTokenPrivate) Decrypt(protocolId, expireTimestamp, sequence uint
 	}
 
 	copy(p.mac, p.TokenData.Buf[CONNECT_TOKEN_PRIVATE_BYTES-MAC_BYTES:])
-	additionalData, nonce := buildTokenCryptData(protocolId, expireTimestamp, sequence)
-	if p.TokenData.Buf, err = DecryptAead(p.TokenData.Buf, additionalData, nonce, privateKey); err != nil {
+	additionalData := buildTokenCryptData(protocolId, expireTimestamp, nonce)
+	if p.TokenData.Buf, err = DecryptAeadX(p.TokenData.Buf, additionalData, nonce, privateKey); err != nil {
 		return nil, err
 	}
 	p.TokenData.Reset() // reset for reads
@@ -116,14 +116,15 @@ func (p *ConnectTokenPrivate) Decrypt(protocolId, expireTimestamp, sequence uint
 }
 
 // Builds the additional data and nonce necessary for encryption and decryption.
-func buildTokenCryptData(protocolId, expireTimestamp, sequence uint64) ([]byte, []byte) {
+func buildTokenCryptData(protocolId, expireTimestamp uint64, nonce []byte) []byte {
 	additionalData := NewBuffer(VERSION_INFO_BYTES + 8 + 8)
 	additionalData.WriteBytes([]byte(VERSION_INFO))
 	additionalData.WriteUint64(protocolId)
 	additionalData.WriteUint64(expireTimestamp)
+	// additionalData.WriteBytes(nonce)
 
-	nonce := NewBuffer(SizeUint64 + SizeUint32)
-	nonce.WriteUint32(0)
-	nonce.WriteUint64(sequence)
-	return additionalData.Buf, nonce.Buf
+	// nonce := NewBuffer(SizeUint64 + SizeUint32)
+	// nonce.WriteUint32(0)
+	// nonce.WriteBytes(nonce)
+	return additionalData.Buf
 }

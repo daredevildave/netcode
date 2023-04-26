@@ -15,6 +15,10 @@ const (
 	TEST_TIMEOUT_SECONDS      = 15
 )
 
+var TEST_NONCE = []byte{0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1,
+	0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1,
+	0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1}
+
 var TEST_PRIVATE_KEY = []byte{0x60, 0x6a, 0xbe, 0x6e, 0xc9, 0x19, 0x10, 0xea,
 	0x9a, 0x65, 0x62, 0xf6, 0x6f, 0x2b, 0x30, 0xe4,
 	0x43, 0x71, 0xd6, 0x2c, 0xd1, 0x99, 0x27, 0x26,
@@ -59,8 +63,8 @@ func TestConnectToken(t *testing.T) {
 		t.Fatalf("ExpireTimestamp did not match expected: %v got: %v\n", inToken.ExpireTimestamp, outToken.ExpireTimestamp)
 	}
 
-	if inToken.Sequence != outToken.Sequence {
-		t.Fatalf("Sequence did not match expected: %v got: %v\n", inToken.Sequence, outToken.Sequence)
+	if bytes.Compare(inToken.Nonce, outToken.Nonce) != 0 {
+		t.Fatalf("Nonce did not match expected\n%#v\n%#v", inToken.Nonce, outToken.Nonce)
 	}
 
 	testCompareTokens(inToken, outToken, t)
@@ -70,11 +74,11 @@ func TestConnectToken(t *testing.T) {
 	}
 
 	// need to decrypt the private tokens before we can compare
-	if _, err := outToken.PrivateData.Decrypt(TEST_PROTOCOL_ID, outToken.ExpireTimestamp, outToken.Sequence, key); err != nil {
+	if _, err := outToken.PrivateData.Decrypt(TEST_PROTOCOL_ID, outToken.ExpireTimestamp, outToken.Nonce, key); err != nil {
 		t.Fatalf("error decrypting private out token data: %s\n", err)
 	}
 
-	if _, err := inToken.PrivateData.Decrypt(TEST_PROTOCOL_ID, inToken.ExpireTimestamp, inToken.Sequence, key); err != nil {
+	if _, err := inToken.PrivateData.Decrypt(TEST_PROTOCOL_ID, inToken.ExpireTimestamp, inToken.Nonce, key); err != nil {
 		t.Fatalf("error decrypting private in token data: %s\n", err)
 	}
 
@@ -98,7 +102,7 @@ func testGenerateConnectToken(servers []net.UDPAddr, privateKey []byte, t *testi
 
 	connectToken := NewConnectToken()
 	// generate will write & encrypt the ConnectTokenPrivate
-	if err := connectToken.Generate(TEST_CLIENT_ID, servers, VERSION_INFO, TEST_PROTOCOL_ID, TEST_CONNECT_TOKEN_EXPIRY, TEST_TIMEOUT_SECONDS, TEST_SEQUENCE_START, userData, privateKey); err != nil {
+	if err := connectToken.Generate(TEST_CLIENT_ID, servers, VERSION_INFO, TEST_PROTOCOL_ID, TEST_CONNECT_TOKEN_EXPIRY, TEST_TIMEOUT_SECONDS, TEST_NONCE, userData, privateKey); err != nil {
 		t.Fatalf("error generating token: %s\n", err)
 	}
 	return connectToken

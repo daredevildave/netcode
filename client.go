@@ -291,7 +291,7 @@ func (c *Client) send() error {
 		p.VersionInfo = c.connectToken.VersionInfo
 		p.ProtocolId = c.connectToken.ProtocolId
 		p.ConnectTokenExpireTimestamp = c.connectToken.ExpireTimestamp
-		p.ConnectTokenSequence = c.connectToken.Sequence
+		p.Nonce = c.connectToken.Nonce
 		p.ConnectTokenData = c.connectToken.PrivateData.Buffer()
 		log.Printf("client[%d] sent connection request packet to server\n", c.id)
 		return c.sendPacket(p)

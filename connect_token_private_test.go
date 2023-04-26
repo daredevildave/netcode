@@ -31,7 +31,7 @@ func TestConnectTokenPrivate(t *testing.T) {
 		t.Fatalf("error writing token private data")
 	}
 
-	if err := token1.Encrypt(TEST_PROTOCOL_ID, expireTimestamp, TEST_SEQUENCE_START, TEST_PRIVATE_KEY); err != nil {
+	if err := token1.Encrypt(TEST_PROTOCOL_ID, expireTimestamp, TEST_NONCE, TEST_PRIVATE_KEY); err != nil {
 		t.Fatalf("error encrypting token: %s\n", err)
 	}
 
@@ -39,7 +39,7 @@ func TestConnectTokenPrivate(t *testing.T) {
 	copy(encryptedToken, token1.Buffer())
 	token2 := NewConnectTokenPrivateEncrypted(encryptedToken)
 
-	if _, err := token2.Decrypt(TEST_PROTOCOL_ID, expireTimestamp, TEST_SEQUENCE_START, TEST_PRIVATE_KEY); err != nil {
+	if _, err := token2.Decrypt(TEST_PROTOCOL_ID, expireTimestamp, TEST_NONCE, TEST_PRIVATE_KEY); err != nil {
 		t.Fatalf("error decrypting token: %s", err)
 	}
 
@@ -59,7 +59,7 @@ func TestConnectTokenPrivate(t *testing.T) {
 		t.Fatalf("error writing token2 buffer")
 	}
 
-	if err := token2.Encrypt(TEST_PROTOCOL_ID, expireTimestamp, TEST_SEQUENCE_START, TEST_PRIVATE_KEY); err != nil {
+	if err := token2.Encrypt(TEST_PROTOCOL_ID, expireTimestamp, TEST_NONCE, TEST_PRIVATE_KEY); err != nil {
 		t.Fatalf("error encrypting second token: %s\n", err)
 	}
 

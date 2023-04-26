@@ -102,11 +102,11 @@ func TestConnectionRequestPacket(t *testing.T) {
 		t.Fatalf("ConnectTokenExpireTimestamp did not match")
 	}
 
-	if inputPacket.ConnectTokenSequence != outputPacket.ConnectTokenSequence {
-		t.Fatalf("ConnectTokenSequence did not match")
+	if !bytes.Equal(inputPacket.Nonce, outputPacket.Nonce) {
+		t.Fatalf("Nonce did not match")
 	}
 
-	if bytes.Compare(decryptedToken, outputPacket.Token.TokenData.Buf) != 0 {
+	if !bytes.Equal(decryptedToken, outputPacket.Token.TokenData.Buf) {
 		t.Fatalf("TokenData did not match")
 	}
 }
@@ -378,7 +378,7 @@ func testBuildRequestPacket(connectTokenKey []byte, t *testing.T) (*RequestPacke
 		t.Fatalf("error writing private data: %s\n", err)
 	}
 
-	tokenData, err := connectToken.PrivateData.Decrypt(TEST_PROTOCOL_ID, connectToken.ExpireTimestamp, TEST_SEQUENCE_START, connectTokenKey)
+	tokenData, err := connectToken.PrivateData.Decrypt(TEST_PROTOCOL_ID, connectToken.ExpireTimestamp, TEST_NONCE, connectTokenKey)
 	if err != nil {
 		t.Fatalf("error decrypting connect token: %s", err)
 	}
@@ -390,7 +390,7 @@ func testBuildRequestPacket(connectTokenKey []byte, t *testing.T) (*RequestPacke
 	// have to regrow the slice to contain MAC_BYTES
 	mac := make([]byte, MAC_BYTES)
 	connectToken.PrivateData.TokenData.Buf = append(connectToken.PrivateData.TokenData.Buf, mac...)
-	if err := connectToken.PrivateData.Encrypt(TEST_PROTOCOL_ID, connectToken.ExpireTimestamp, TEST_SEQUENCE_START, connectTokenKey); err != nil {
+	if err := connectToken.PrivateData.Encrypt(TEST_PROTOCOL_ID, connectToken.ExpireTimestamp, TEST_NONCE, connectTokenKey); err != nil {
 		t.Fatalf("error re-encrypting connect private token: %s\n", err)
 	}
 
@@ -399,7 +399,7 @@ func testBuildRequestPacket(connectTokenKey []byte, t *testing.T) (*RequestPacke
 	inputPacket.VersionInfo = []byte(VERSION_INFO)
 	inputPacket.ProtocolId = TEST_PROTOCOL_ID
 	inputPacket.ConnectTokenExpireTimestamp = connectToken.ExpireTimestamp
-	inputPacket.ConnectTokenSequence = TEST_SEQUENCE_START
+	inputPacket.Nonce = TEST_NONCE
 	inputPacket.Token = connectToken.PrivateData
 	inputPacket.ConnectTokenData = connectToken.PrivateData.Buffer()
 	return inputPacket, decryptedToken

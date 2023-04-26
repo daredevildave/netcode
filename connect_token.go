@@ -9,6 +9,7 @@ import (
 
 // number of bytes for connect tokens
 const CONNECT_TOKEN_BYTES = 2048
+const CONNECT_TOKEN_NONCE_LENGTH = 24
 
 // Token used for connecting
 type ConnectToken struct {
@@ -17,7 +18,7 @@ type ConnectToken struct {
 	ProtocolId      uint64               // protocol id for communications
 	CreateTimestamp uint64               // when this token was created
 	ExpireTimestamp uint64               // when this token expires
-	Sequence        uint64               // the sequence id
+	Nonce           []byte               // the nonce
 	PrivateData     *ConnectTokenPrivate // reference to the private parts of this connect token
 }
 
@@ -30,7 +31,7 @@ func NewConnectToken() *ConnectToken {
 
 // Generates the token and private token data with the supplied config values and sequence id.
 // This will also write and encrypt the private token
-func (token *ConnectToken) Generate(clientId uint64, serverAddrs []net.UDPAddr, versionInfo string, protocolId uint64, expireSeconds uint64, timeoutSeconds int32, sequence uint64, userData, privateKey []byte) error {
+func (token *ConnectToken) Generate(clientId uint64, serverAddrs []net.UDPAddr, versionInfo string, protocolId uint64, expireSeconds uint64, timeoutSeconds int32, nonce []byte, userData, privateKey []byte) error {
 	token.CreateTimestamp = uint64(time.Now().Unix())
 	if expireSeconds >= 0 {
 		token.ExpireTimestamp = token.CreateTimestamp + expireSeconds
@@ -40,8 +41,11 @@ func (token *ConnectToken) Generate(clientId uint64, serverAddrs []net.UDPAddr, 
 	token.TimeoutSeconds = timeoutSeconds
 	token.VersionInfo = []byte(VERSION_INFO)
 	token.ProtocolId = protocolId
-	token.Sequence = sequence
-
+	// nonce, err := GenerateNonce()
+	// if err != nil {
+	// 	return err
+	// }
+	token.Nonce = nonce
 	token.PrivateData = NewConnectTokenPrivate(clientId, timeoutSeconds, serverAddrs, userData)
 	if err := token.PrivateData.Generate(); err != nil {
 		return err
@@ -55,7 +59,7 @@ func (token *ConnectToken) Generate(clientId uint64, serverAddrs []net.UDPAddr, 
 		return err
 	}
 
-	if err := token.PrivateData.Encrypt(token.ProtocolId, token.ExpireTimestamp, sequence, privateKey); err != nil {
+	if err := token.PrivateData.Encrypt(token.ProtocolId, token.ExpireTimestamp, token.Nonce, privateKey); err != nil {
 		return err
 	}
 
@@ -69,7 +73,7 @@ func (token *ConnectToken) Write() ([]byte, error) {
 	buffer.WriteUint64(token.ProtocolId)
 	buffer.WriteUint64(token.CreateTimestamp)
 	buffer.WriteUint64(token.ExpireTimestamp)
-	buffer.WriteUint64(token.Sequence)
+	buffer.WriteBytes(token.Nonce)
 
 	// assumes private token has already been encrypted
 	buffer.WriteBytes(token.PrivateData.Buffer())
@@ -115,8 +119,8 @@ func ReadConnectToken(tokenBuffer []byte) (*ConnectToken, error) {
 		return nil, ErrExpiredTokenTimestamp
 	}
 
-	if token.Sequence, err = buffer.GetUint64(); err != nil {
-		return nil, fmt.Errorf("read connect data has bad sequence %s", err)
+	if token.Nonce, err = buffer.GetBytes(CONNECT_TOKEN_NONCE_LENGTH); err != nil {
+		return nil, fmt.Errorf("read connect data has bad nonce %s", err)
 	}
 
 	if privateData, err = buffer.GetBytes(CONNECT_TOKEN_PRIVATE_BYTES); err != nil {
@@ -132,4 +136,8 @@ func ReadConnectToken(tokenBuffer []byte) (*ConnectToken, error) {
 	}
 
 	return token, nil
+}
+
+func GenerateNonce() ([]byte, error) {
+	return RandomBytes(CONNECT_TOKEN_NONCE_LENGTH)
 }

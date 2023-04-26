@@ -18,7 +18,7 @@ const MAC_BYTES = 16
 const NONCE_BYTES = 8
 const MAX_SERVERS_PER_CONNECT = 32
 
-const VERSION_INFO = "NETCODE 1.01\x00"
+const VERSION_INFO = "NETCODE 1.02\x00"
 
 const (
 	ConnectionRequest PacketType = iota
@@ -88,7 +88,7 @@ type RequestPacket struct {
 	VersionInfo                 []byte               // version information of communications
 	ProtocolId                  uint64               // protocol id used in communications
 	ConnectTokenExpireTimestamp uint64               // when the connect token expires
-	ConnectTokenSequence        uint64               // the sequence id of this token
+	Nonce                       []byte               // the nonce
 	Token                       *ConnectTokenPrivate // reference to the private parts of this packet
 	ConnectTokenData            []byte               // the encrypted Token after Write -> Encrypt
 }
@@ -105,9 +105,9 @@ func (p *RequestPacket) Write(buf []byte, protocolId, sequence uint64, writePack
 	buffer.WriteBytes(p.VersionInfo)
 	buffer.WriteUint64(p.ProtocolId)
 	buffer.WriteUint64(p.ConnectTokenExpireTimestamp)
-	buffer.WriteUint64(p.ConnectTokenSequence)
+	buffer.WriteBytes(p.Nonce)
 	buffer.WriteBytes(p.ConnectTokenData) // write the encrypted connection token private data
-	if buffer.Pos != 1+13+8+8+8+CONNECT_TOKEN_PRIVATE_BYTES {
+	if buffer.Pos != 1+13+8+8+CONNECT_TOKEN_NONCE_LENGTH+CONNECT_TOKEN_PRIVATE_BYTES {
 		return -1, ErrInvalidBufferSize
 	}
 	return buffer.Pos, nil
@@ -126,7 +126,7 @@ func (p *RequestPacket) Read(packetData []byte, packetLen int, protocolId, curre
 		return ErrRequestPacketTypeNotAllowed
 	}
 
-	if packetLen != 1+VERSION_INFO_BYTES+8+8+8+CONNECT_TOKEN_PRIVATE_BYTES {
+	if packetLen != 1+VERSION_INFO_BYTES+8+8+CONNECT_TOKEN_NONCE_LENGTH+CONNECT_TOKEN_PRIVATE_BYTES {
 		return ErrRequestBadPacketLength
 	}
 
@@ -153,12 +153,12 @@ func (p *RequestPacket) Read(packetData []byte, packetLen int, protocolId, curre
 		return ErrRequestPacketConnectTokenExpired
 	}
 
-	p.ConnectTokenSequence, err = packetBuffer.GetUint64()
+	p.Nonce, err = packetBuffer.GetBytes(CONNECT_TOKEN_NONCE_LENGTH)
 	if err != nil {
 		return err
 	}
 
-	if packetBuffer.Pos != 1+VERSION_INFO_BYTES+8+8+8 {
+	if packetBuffer.Pos != 1+VERSION_INFO_BYTES+8+8+CONNECT_TOKEN_NONCE_LENGTH {
 		return ErrRequestPacketBufferInvalidLength
 	}
 
@@ -169,7 +169,7 @@ func (p *RequestPacket) Read(packetData []byte, packetLen int, protocolId, curre
 	}
 
 	p.Token = NewConnectTokenPrivateEncrypted(tokenBuffer)
-	if _, err := p.Token.Decrypt(p.ProtocolId, p.ConnectTokenExpireTimestamp, p.ConnectTokenSequence, privateKey); err != nil {
+	if _, err := p.Token.Decrypt(p.ProtocolId, p.ConnectTokenExpireTimestamp, p.Nonce, privateKey); err != nil {
 		return fmt.Errorf("error decrypting connect token private data: %s", err)
 	}
 
