@@ -180,7 +180,8 @@ func connectTokenGenerator(clientId uint64, serverAddrs []net.UDPAddr, versionIn
 	}
 
 	connectToken := netcode.NewConnectToken()
-	if err := connectToken.Generate(clientId, serverAddrs, versionInfo, protocolId, tokenExpiry, timeoutSeconds, sequence, userData, serverKey); err != nil {
+	nonce, _ := netcode.GenerateNonce()
+	if err := connectToken.Generate(clientId, serverAddrs, versionInfo, protocolId, tokenExpiry, timeoutSeconds, nonce, userData, serverKey); err != nil {
 		return nil, err
 	}
 

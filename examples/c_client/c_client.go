@@ -118,8 +118,9 @@ func getConnectToken(clientId uint64) *netcode.ConnectToken {
 	}
 
 	connectToken := netcode.NewConnectToken()
+	nonce, _ := netcode.GenerateNonce()
 	// generate will write & encrypt the ConnectTokenPrivate
-	if err := connectToken.Generate(clientId, servers, netcode.VERSION_INFO, PROTOCOL_ID, CONNECT_TOKEN_EXPIRY, TIMEOUT_SECONDS, SEQUENCE_START, userData, privateKey); err != nil {
+	if err := connectToken.Generate(clientId, servers, netcode.VERSION_INFO, PROTOCOL_ID, CONNECT_TOKEN_EXPIRY, TIMEOUT_SECONDS, nonce, userData, privateKey); err != nil {
 		log.Fatalf("error generating token: %s\n", err)
 	}
 	return connectToken

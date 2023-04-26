@@ -6,7 +6,12 @@ Go implementation of netcode.io
 This is the main repository for the Go implementation of [netcode.io](http://netcode.io).
 
 ## Dependencies
-The only dependency is [golang.org/x/crypto/chacha20poly1305](https://godoc.org/golang.org/x/crypto/chacha20poly1305) and it has been vendored so it should not be necessary to retrieve any packages outside of netcode.
+The only dependency is [golang.org/x/crypto/chacha20poly1305](https://godoc.org/golang.org/x/crypto/chacha20poly1305) which can be installed with the `go get` command
+
+```
+cd netcode
+go get .
+```
 
 ## Testing
 To run tests for this package run the following from the package directory:
